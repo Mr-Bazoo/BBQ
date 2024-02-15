@@ -27,7 +27,8 @@ FAN_GAIN = float(FAN_HIGH - FAN_LOW) / float(MAX_TEMP - MIN_TEMP)
 
 
 def getTemperature():#temperatuur thermometer toevoegen
-        return 
+        with open('/sys/class/thermal/thermal_zone0/temp') as f:
+            return float(f.read()) / 1000
 
 
 def handleFanSpeed(fan, temperature):
