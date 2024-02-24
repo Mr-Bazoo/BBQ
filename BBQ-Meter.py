@@ -1,5 +1,10 @@
 import time
-from max6675class import MAX6675, MAX6675Error
+from mx6675class import MAX6675, MAX6675Error
+cs_pin = 24
+clock_pin = 23
+data_pin = 22
+units = "c"
+degree_sign = u'\xb0'
 import RPi.GPIO as GPIO
 import signal
 import sys
@@ -37,14 +42,14 @@ GPIO.setup(TACH, GPIO.IN, pull_up_down=GPIO.PUD_UP)  # Pull up to 3.3V
 
 
 
-def getTemperature(): 
+def temperature(): 
     try: # Main program loop
         while True:
             thermocouple = MAX6675(cs_pin, clock_pin, data_pin, units)
             time.sleep(2)
-            temperature = thermocouple.get()
-            return temperature
+            print("Temperature\t{} {}C".format(thermocouple.get(), degree_sign))
     except KeyboardInterrupt:
+        print("Script end!")
         thermocouple.cleanup()
 
 def handleFanSpeed(fan, temperature):
