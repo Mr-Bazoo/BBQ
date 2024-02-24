@@ -68,7 +68,7 @@ try:
     GPIO.setup(FAN_PIN, GPIO.OUT, initial=GPIO.LOW)
     fan = GPIO.PWM(FAN_PIN, PWM_FREQ)
     while True:
-        handleFanSpeed(fan, getTemperature())
+        handleFanSpeed(fan, Temperature())
         time.sleep(WAIT_TIME)
 
 except KeyboardInterrupt:
