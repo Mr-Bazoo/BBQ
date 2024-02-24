@@ -1,5 +1,5 @@
 import time
-from max6675class import MAX6675, MAX6675Error
+from mx6675class import MAX6675, MAX6675Error
 cs_pin = 24
 clock_pin = 23
 data_pin = 22
