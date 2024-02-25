@@ -1,6 +1,8 @@
 import RPi.GPIO as GPIO
-from time import sleep
+from time import sleep, time
 from max6675class import MAX6675, MAX6675Error
+from luma.core.interface.serial import i2c
+from luma.oled.device import sh1106
 
 # Constants
 PWM_FREQ = 25
@@ -19,6 +21,10 @@ FAN_GAIN = float(FAN_HIGH - FAN_LOW) / float(MAX_TEMP - MIN_TEMP)
 SW_PIN = 5
 DT_PIN = 6
 CLK_PIN = 13
+
+# OLED Display Constants
+serial = i2c(port=1, address=0x3C)
+oled = sh1106(serial, rotate=0)
 
 # Initialize GPIO
 GPIO.setmode(GPIO.BCM)
@@ -48,6 +54,8 @@ a_last = 1
 b_last = 1
 taster = False 
 last_taster = False
+press_start_time = 0
+press_duration = 0
 
 # Function to get temperature
 def get_temperature():
@@ -66,6 +74,29 @@ def handle_fan_speed(temperature):
         elif temperature < OFF_TEMP:
             fan.start(FAN_OFF)
 
+# Function to display on OLED
+def display_on_oled(temperature, fan_speed):
+    oled.clear()
+    oled.text("Temp: {:.2f}C".format(temperature), 0, 0)
+    oled.text("Fan Speed: {}".format(fan_speed), 0, 20)
+    oled.show()
+
+# Function to handle long press
+def handle_long_press():
+    global press_duration
+    press_duration = time() - press_start_time
+    if press_duration >= 5:  # If pressed for 5 seconds, initiate shutdown
+        print("Shutting down...")
+        oled.clear()
+        oled.text("Shutting down...", 0, 0)
+        oled.show()
+        sleep(2)
+        GPIO.cleanup()
+        oled.clear()
+        oled.show()
+        # You can add additional shutdown commands if needed
+        # e.g., os.system("sudo shutdown -h now")
+
 # Main program loop
 try:
     while True:
@@ -73,6 +104,11 @@ try:
         taster = not GPIO.input(SW_PIN)
 
         if taster != last_taster:
+            if taster:
+                press_start_time = time()
+            else:
+                handle_long_press()
+
             position = position % 101  # Ensure position stays within 0-100
             temp_setpoint = round((position / 100.0) * (MAX_TEMP - MIN_TEMP) + MIN_TEMP, 2)
             print(f'Setpoint Temperature: {temp_setpoint}°C')
@@ -84,6 +120,10 @@ try:
         temperature = get_temperature()
         handle_fan_speed(temperature)
 
+        # Display on OLED
+        fan_speed = int(fan.duty() / FAN_MAX * 100)
+        display_on_oled(temperature, fan_speed)
+
         sleep(WAIT_TIME)
 
 except KeyboardInterrupt:
@@ -92,3 +132,5 @@ except KeyboardInterrupt:
 finally:
     fan.stop()
     GPIO.cleanup()
+    oled.clear()
+    oled.show()
