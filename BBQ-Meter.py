@@ -78,7 +78,7 @@ def handle_fan_speed(temperature):
             fan.start(FAN_OFF)
 
 # Function to display on OLED
-def display_on_oled(temperature, fan_speed):
+def display_on_oled(temperature, fan_speed, SETPOINT_TEMP):
     oled.clear()
 
     # Create an Image object
@@ -116,11 +116,6 @@ def handle_long_press():
         oled.show()
         # Je kunt extra shutdown-opdrachten toevoegen indien nodig
         # b.v., os.system("sudo shutdown -h now")
-    else:
-        # Hier kun je de temperatuur instellen met de rotary encoder
-        # Pas het volgende deel aan om de temperatuur te wijzigen op basis van de rotary encoder
-        SETPOINT_TEMP = round((position / 100.0) * (MAX_TEMP - MIN_TEMP) + MIN_TEMP, 2)
-        print(f"Setpoint Temperature: {SETPOINT_TEMP}C")
 
 # Main program loop
 try:
