@@ -3,6 +3,8 @@ from time import sleep, time
 from mx6675class import MAX6675, MAX6675Error
 from luma.core.interface.serial import i2c
 from luma.oled.device import sh1106
+from luma.core.render import canvas
+from PIL import ImageDraw
 
 # Constants
 PWM_FREQ = 25
@@ -75,10 +77,18 @@ def handle_fan_speed(temperature):
             fan.start(FAN_OFF)
 
 # Function to display on OLED
+# Function to display on OLED
 def display_on_oled(temperature, fan_speed):
     oled.clear()
-    oled.text("Temp: {:.2f}C".format(temperature), 0, 0)
-    oled.text("Fan Speed: {}".format(fan_speed), 0, 20)
+
+    # Create a drawing object
+    draw = ImageDraw.Draw(oled)
+
+    # Display temperature and fan speed
+    draw.text((0, 0), "Temp: {:.2f}C".format(temperature), fill="white")
+    draw.text((0, 20), "Fan Speed: {}".format(fan_speed), fill="white")
+
+    # Update the display
     oled.show()
 
 # Function to handle long press
