@@ -120,8 +120,11 @@ try:
         temperature = get_temperature()
         handle_fan_speed(temperature)
 
+        # Update the fan duty cycle variable
+        current_duty_cycle = FAN_LOW + delta * FAN_GAIN if temperature > MIN_TEMP else FAN_OFF
+
         # Display on OLED
-        fan_speed = int(fan.get_duty_cycle() / FAN_MAX * 100)
+        fan_speed = int(current_duty_cycle / FAN_MAX * 100)
         display_on_oled(temperature, fan_speed)
 
         sleep(WAIT_TIME)
