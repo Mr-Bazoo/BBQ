@@ -91,7 +91,7 @@ def update_setpoint(position):
     SETPOINT_TEMP = min(max(SETPOINT_TEMP + position, MIN_TEMP), MAX_TEMP)
 
 # Function to display on OLED
-def display_on_oled(temperature, fan_speed, SETPOINT_TEMP):
+def display_on_oled(temperature, fan_speed):
     oled.clear()
 
     # Create an Image object
