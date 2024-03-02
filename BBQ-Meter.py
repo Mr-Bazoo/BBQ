@@ -77,19 +77,21 @@ def handle_fan_speed(temperature):
             fan.start(FAN_OFF)
 
 # Function to display on OLED
-# Function to display on OLED
 def display_on_oled(temperature, fan_speed):
     oled.clear()
 
+    # Create an Image object
+    image = Image.new("1", oled.size)
+
     # Create a drawing object
-    draw = ImageDraw.Draw(oled)
+    draw = ImageDraw.Draw(image)
 
     # Display temperature and fan speed
     draw.text((0, 0), "Temp: {:.2f}C".format(temperature), fill="white")
     draw.text((0, 20), "Fan Speed: {}".format(fan_speed), fill="white")
 
-    # Update the display
-    oled.show()
+    # Paste the image onto the OLED display
+    oled.display(image)
 
 # Function to handle long press
 def handle_long_press():
