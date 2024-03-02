@@ -134,19 +134,17 @@ try:
             else:
                 handle_long_press()
 
-        # Check if the rotary encoder is turned
+        # Check of de rotary encoder wordt gedraaid
         if a != a_last:
             if a == 0:
-                # Update the temperature based on the direction
-                if a == b:
-                    SETPOINT_TEMP += 1  # Increase temperature
-                else:
-                    SETPOINT_TEMP -= 1  # Decrease temperature
+                # Update de temperatuur op basis van de draairichting
+                SETPOINT_TEMP += 1 if a == b else -1  # Verhoog of verlaag temperatuur met 1 graad
 
+                # Beperk de temperatuur tot het opgegeven bereik
                 SETPOINT_TEMP = min(max(SETPOINT_TEMP, MIN_TEMP), MAX_TEMP)
                 print(f"Setpoint Temperature: {SETPOINT_TEMP}C")
 
-        # Read temperature and adjust fan speed
+        # Lees de temperatuur en pas de ventilatorsnelheid aan
         temperature = get_temperature()
         if temperature is not None:
             if temperature > MIN_TEMP:
@@ -155,12 +153,12 @@ try:
             elif temperature < OFF_TEMP:
                 fan.start(FAN_OFF)
             else:
-                delta = 0  # or set a default value or handle None appropriately
+                delta = 0  # Of stel een standaardwaarde in of behandel None op een gepaste manier
 
-        # Update the fan duty cycle variable
+        # Werk de ventilator duty cycle variabele bij
         current_duty_cycle = FAN_LOW + delta * FAN_GAIN if temperature is not None and temperature > MIN_TEMP else FAN_OFF
 
-        # Display on OLED
+        # Weergave op OLED
         fan_speed = int(current_duty_cycle / FAN_MAX * 100)
         display_on_oled(temperature, fan_speed)
 
@@ -170,11 +168,12 @@ try:
         a_last = a
 
 except KeyboardInterrupt:
-    print('\nScript end!')
+    print('\nScript eindigt!')
 
 finally:
     fan.stop()
     GPIO.cleanup()
     oled.clear()
     oled.show()
+
 
