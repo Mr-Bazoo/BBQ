@@ -121,7 +121,7 @@ try:
         handle_fan_speed(temperature)
 
         # Display on OLED
-        fan_speed = int(fan.duty() / FAN_MAX * 100)
+        fan_speed = int(fan.get_duty_cycle() / FAN_MAX * 100)
         display_on_oled(temperature, fan_speed)
 
         sleep(WAIT_TIME)
