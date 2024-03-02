@@ -10,7 +10,7 @@ from PIL import Image, ImageDraw
 PWM_FREQ = 25
 FAN_PIN = 18
 WAIT_TIME = 1
-OFF_TEMP = 40
+OFF_TEMP = 20
 MIN_TEMP = 50
 MAX_TEMP = 500
 FAN_LOW = 1
