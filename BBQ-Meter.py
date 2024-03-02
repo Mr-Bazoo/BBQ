@@ -138,8 +138,8 @@ try:
         if a != a_last:
             if a == 0:
                 # Hier wordt de positie van de rotary encoder bijgewerkt
-                position += 1
-                position = min(position, 100)  # Zorg ervoor dat de positie binnen 0-100 blijft
+                position += 1 if a == b else -1  # Increment of decrement based on the direction
+                position = min(max(position, 0), 100)  # Zorg ervoor dat de positie binnen 0-100 blijft
                 SETPOINT_TEMP = round((position / 100.0) * (MAX_TEMP - MIN_TEMP) + MIN_TEMP, 2)
                 print(f"Setpoint Temperature: {SETPOINT_TEMP}C")
 
@@ -174,3 +174,4 @@ finally:
     GPIO.cleanup()
     oled.clear()
     oled.show()
+
