@@ -86,8 +86,12 @@ def update_setpoint():
         SETPOINT_TEMP -= 1
     SETPOINT_TEMP = min(max(SETPOINT_TEMP, MIN_TEMP), MAX_TEMP)
 
+def update_setpoint(position):
+    global SETPOINT_TEMP
+    SETPOINT_TEMP = min(max(SETPOINT_TEMP + position, MIN_TEMP), MAX_TEMP)
+
 # Function to display on OLED
-def display_on_oled(temperature, fan_speed):
+def display_on_oled(temperature, fan_speed, SETPOINT_TEMP):
     oled.clear()
 
     # Create an Image object
@@ -144,10 +148,10 @@ try:
                 # Controleer de draairichting
                 direction = 1 if a == b else -1
 
-                # Update de temperatuur op basis van de draairichting
-                position += direction
-                update_setpoint()
+                # Update de setpoint temperatuur op basis van de draairichting
+                update_setpoint(direction)
                 print(f"Setpoint Temperature: {SETPOINT_TEMP}C")
+
 
         # Lees de temperatuur en pas de ventilatorsnelheid aan
         temperature = get_temperature()
