@@ -1,6 +1,6 @@
 import RPi.GPIO as GPIO
 from time import sleep, time
-from max6675class import MAX6675, MAX6675Error
+from mx6675class import MAX6675, MAX6675Error
 from luma.core.interface.serial import i2c
 from luma.oled.device import sh1106
 
