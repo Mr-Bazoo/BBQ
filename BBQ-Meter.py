@@ -18,6 +18,7 @@ FAN_HIGH = 100
 FAN_OFF = 0
 FAN_MAX = 100
 FAN_GAIN = float(FAN_HIGH - FAN_LOW) / float(MAX_TEMP - MIN_TEMP)
+SETPOINT_TEMP = 50  # Je kunt hier een startwaarde instellen
 
 # Rotary Encoder Constants
 SW_PIN = 5
@@ -42,7 +43,7 @@ GPIO.setup(CLK_PIN, GPIO.IN)
 GPIO.setup(DT_PIN, GPIO.IN)
 
 # Initialize MAX6675
-CS_PIN = 24
+CS_PIN = 25
 CLOCK_PIN = 23
 DATA_PIN = 22
 units = "c"
@@ -93,14 +94,16 @@ def display_on_oled(temperature, fan_speed):
         # Display a message when temperature is None
         draw.text((0, 0), "Error reading temperature", fill="white")
 
-    draw.text((0, 20), "Fan Speed: {}".format(fan_speed), fill="white")
+    # Display setpoint temperature
+    draw.text((0, 20), "Setpoint: {:.2f}C".format(SETPOINT_TEMP), fill="white")
+
+    draw.text((0, 40), "Fan Speed: {}".format(fan_speed), fill="white")
 
     # Paste the image onto the OLED display
     oled.display(image)
 
-# Function to handle long press
 def handle_long_press():
-    global press_duration
+    global press_duration, SETPOINT_TEMP
     press_duration = time() - press_start_time
     if press_duration >= 5:  # If pressed for 5 seconds, initiate shutdown
         print("Shutting down...")
@@ -111,8 +114,13 @@ def handle_long_press():
         GPIO.cleanup()
         oled.clear()
         oled.show()
-        # You can add additional shutdown commands if needed
-        # e.g., os.system("sudo shutdown -h now")
+        # Je kunt extra shutdown-opdrachten toevoegen indien nodig
+        # b.v., os.system("sudo shutdown -h now")
+    else:
+        # Hier kun je de temperatuur instellen met de rotary encoder
+        # Pas het volgende deel aan om de temperatuur te wijzigen op basis van de rotary encoder
+        SETPOINT_TEMP = round((position / 100.0) * (MAX_TEMP - MIN_TEMP) + MIN_TEMP, 2)
+        print(f"Setpoint Temperature: {SETPOINT_TEMP}C")
 
 # Main program loop
 try:
