@@ -134,13 +134,14 @@ try:
             else:
                 handle_long_press()
 
-        # Check of de rotary encoder wordt gedraaid
+        # Bij elke klik van de rotary encoder
         if a != a_last:
             if a == 0:
-                # Update de temperatuur op basis van de draairichting
-                SETPOINT_TEMP += 1 if a == b else -1  # Verhoog of verlaag temperatuur met 1 graad
+                # Controleer de draairichting
+                direction = 1 if a == b else -1
 
-                # Beperk de temperatuur tot het opgegeven bereik
+                # Update de temperatuur op basis van de draairichting
+                SETPOINT_TEMP += direction
                 SETPOINT_TEMP = min(max(SETPOINT_TEMP, MIN_TEMP), MAX_TEMP)
                 print(f"Setpoint Temperature: {SETPOINT_TEMP}C")
 
