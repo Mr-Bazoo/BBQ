@@ -121,14 +121,15 @@ try:
 
             position = position % 101  # Ensure position stays within 0-100
             temp_setpoint = round((position / 100.0) * (MAX_TEMP - MIN_TEMP) + MIN_TEMP, 2)
-            print(f'Setpoint Temperature: {temp_setpoint}°C')
-            sleep(0.01)
-
-        last_taster = taster
 
         # Read temperature and adjust fan speed
         temperature = get_temperature()
-        handle_fan_speed(temperature)
+        if temperature is not None:
+            if temperature > MIN_TEMP:
+                delta = min(temperature, MAX_TEMP) - MIN_TEMP
+                fan.start(FAN_LOW + delta * FAN_GAIN)
+            elif temperature < OFF_TEMP:
+                fan.start(FAN_OFF)
 
         # Update the fan duty cycle variable
         current_duty_cycle = FAN_LOW + delta * FAN_GAIN if temperature > MIN_TEMP else FAN_OFF
@@ -138,6 +139,8 @@ try:
         display_on_oled(temperature, fan_speed)
 
         sleep(WAIT_TIME)
+
+        last_taster = taster
 
 except KeyboardInterrupt:
     print('\nScript end!')
