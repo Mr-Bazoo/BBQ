@@ -4,7 +4,7 @@ from mx6675class import MAX6675, MAX6675Error
 from luma.core.interface.serial import i2c
 from luma.oled.device import sh1106
 from luma.core.render import canvas
-from PIL import ImageDraw
+from PIL import Image, ImageDraw
 
 # Constants
 PWM_FREQ = 25
@@ -132,9 +132,11 @@ try:
                 fan.start(FAN_LOW + delta * FAN_GAIN)
             elif temperature < OFF_TEMP:
                 fan.start(FAN_OFF)
+            else:
+                delta = 0  # or set a default value or handle None appropriately
 
         # Update the fan duty cycle variable
-        current_duty_cycle = FAN_LOW + delta * FAN_GAIN if temperature > MIN_TEMP else FAN_OFF
+        current_duty_cycle = FAN_LOW + delta * FAN_GAIN if temperature is not None and temperature > MIN_TEMP else FAN_OFF
 
         # Display on OLED
         fan_speed = int(current_duty_cycle / FAN_MAX * 100)
