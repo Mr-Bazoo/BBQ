@@ -11,14 +11,14 @@ PWM_FREQ = 25
 FAN_PIN = 18
 WAIT_TIME = 1
 OFF_TEMP = 40
-MIN_TEMP = 45
-MAX_TEMP = 70
+MIN_TEMP = 50
+MAX_TEMP = 500
 FAN_LOW = 1
 FAN_HIGH = 100
 FAN_OFF = 0
 FAN_MAX = 100
 FAN_GAIN = float(FAN_HIGH - FAN_LOW) / float(MAX_TEMP - MIN_TEMP)
-SETPOINT_TEMP = 50  # Je kunt hier een startwaarde instellen
+SETPOINT_TEMP = 100  # Je kunt hier een startwaarde instellen
 
 # Rotary Encoder Constants
 SW_PIN = 5
@@ -134,13 +134,16 @@ try:
             else:
                 handle_long_press()
 
-        # Hier wordt gecontroleerd of de rotary encoder is gedraaid
+        # Check if the rotary encoder is turned
         if a != a_last:
             if a == 0:
-                # Hier wordt de positie van de rotary encoder bijgewerkt
-                position += 1 if a == b else -1  # Increment of decrement based on the direction
-                position = min(max(position, 0), 100)  # Zorg ervoor dat de positie binnen 0-100 blijft
-                SETPOINT_TEMP = round((position / 100.0) * (MAX_TEMP - MIN_TEMP) + MIN_TEMP, 2)
+                # Update the temperature based on the direction
+                if a == b:
+                    SETPOINT_TEMP += 1  # Increase temperature
+                else:
+                    SETPOINT_TEMP -= 1  # Decrease temperature
+
+                SETPOINT_TEMP = min(max(SETPOINT_TEMP, MIN_TEMP), MAX_TEMP)
                 print(f"Setpoint Temperature: {SETPOINT_TEMP}C")
 
         # Read temperature and adjust fan speed
