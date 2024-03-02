@@ -86,8 +86,13 @@ def display_on_oled(temperature, fan_speed):
     # Create a drawing object
     draw = ImageDraw.Draw(image)
 
-    # Display temperature and fan speed
-    draw.text((0, 0), "Temp: {:.2f}C".format(temperature), fill="white")
+    if temperature is not None:
+        # Display temperature and fan speed
+        draw.text((0, 0), "Temp: {:.2f}C".format(temperature), fill="white")
+    else:
+        # Display a message when temperature is None
+        draw.text((0, 0), "Error reading temperature", fill="white")
+
     draw.text((0, 20), "Fan Speed: {}".format(fan_speed), fill="white")
 
     # Paste the image onto the OLED display
