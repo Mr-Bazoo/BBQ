@@ -77,8 +77,17 @@ def handle_fan_speed(temperature):
         elif temperature < OFF_TEMP:
             fan.start(FAN_OFF)
 
+# Function to update setpoint temperature based on rotary encoder
+def update_setpoint():
+    global position, SETPOINT_TEMP
+    if position > 0:
+        SETPOINT_TEMP += 1
+    elif position < 0:
+        SETPOINT_TEMP -= 1
+    SETPOINT_TEMP = min(max(SETPOINT_TEMP, MIN_TEMP), MAX_TEMP)
+
 # Function to display on OLED
-def display_on_oled(temperature, fan_speed, SETPOINT_TEMP):
+def display_on_oled(temperature, fan_speed):
     oled.clear()
 
     # Create an Image object
@@ -136,8 +145,8 @@ try:
                 direction = 1 if a == b else -1
 
                 # Update de temperatuur op basis van de draairichting
-                SETPOINT_TEMP += direction
-                SETPOINT_TEMP = min(max(SETPOINT_TEMP, MIN_TEMP), MAX_TEMP)
+                position += direction
+                update_setpoint()
                 print(f"Setpoint Temperature: {SETPOINT_TEMP}C")
 
         # Lees de temperatuur en pas de ventilatorsnelheid aan
