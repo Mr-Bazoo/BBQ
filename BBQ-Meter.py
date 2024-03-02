@@ -134,8 +134,14 @@ try:
             else:
                 handle_long_press()
 
-            position = position % 101  # Ensure position stays within 0-100
-            temp_setpoint = round((position / 100.0) * (MAX_TEMP - MIN_TEMP) + MIN_TEMP, 2)
+        # Hier wordt gecontroleerd of de rotary encoder is gedraaid
+        if a != a_last:
+            if a == 0:
+                # Hier wordt de positie van de rotary encoder bijgewerkt
+                position += 1
+                position = min(position, 100)  # Zorg ervoor dat de positie binnen 0-100 blijft
+                SETPOINT_TEMP = round((position / 100.0) * (MAX_TEMP - MIN_TEMP) + MIN_TEMP, 2)
+                print(f"Setpoint Temperature: {SETPOINT_TEMP}C")
 
         # Read temperature and adjust fan speed
         temperature = get_temperature()
@@ -158,6 +164,7 @@ try:
         sleep(WAIT_TIME)
 
         last_taster = taster
+        a_last = a
 
 except KeyboardInterrupt:
     print('\nScript end!')
