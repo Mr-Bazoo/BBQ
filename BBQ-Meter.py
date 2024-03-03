@@ -123,6 +123,11 @@ def handle_long_press():
         # Je kunt extra shutdown-opdrachten toevoegen indien nodig
         # b.v., os.system("sudo shutdown -h now")
 
+def update_setpoint(direction):
+    global SETPOINT_TEMP
+    SETPOINT_TEMP += direction  # Increase or decrease the setpoint by 1 degree
+    SETPOINT_TEMP = min(max(SETPOINT_TEMP, MIN_TEMP), MAX_TEMP)
+
 # Main program loop
 try:
     while True:
