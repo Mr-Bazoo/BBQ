@@ -19,6 +19,7 @@ FAN_OFF = 0
 FAN_MAX = 100
 FAN_GAIN = float(FAN_HIGH - FAN_LOW) / float(MAX_TEMP - MIN_TEMP)
 SETPOINT_TEMP = 100  # Je kunt hier een startwaarde instellen
+DEBOUNCE_TIME = 0.05  # Adjust this value based on your requirements
 
 # Rotary Encoder Constants
 SW_PIN = 5
@@ -59,6 +60,7 @@ taster = False
 last_taster = False
 press_start_time = 0
 press_duration = 0
+last_change_time = time()
 
 # Function to get temperature
 def get_temperature():
@@ -76,15 +78,6 @@ def handle_fan_speed(temperature):
             fan.start(FAN_LOW + delta * FAN_GAIN)
         elif temperature < OFF_TEMP:
             fan.start(FAN_OFF)
-
-# Function to update setpoint temperature based on rotary encoder
-def update_setpoint():
-    global position, SETPOINT_TEMP
-    if position > 0:
-        SETPOINT_TEMP += 1
-    elif position < 0:
-        SETPOINT_TEMP -= 1
-    SETPOINT_TEMP = min(max(SETPOINT_TEMP, MIN_TEMP), MAX_TEMP)
 
 def update_setpoint(position):
     global SETPOINT_TEMP
@@ -136,45 +129,48 @@ try:
         a, b = GPIO.input(CLK_PIN), GPIO.input(DT_PIN)
         taster = not GPIO.input(SW_PIN)
 
-        if taster != last_taster:
-            if taster:
-                press_start_time = time()
-            else:
-                handle_long_press()
+        # Debounce voor de rotary encoder
+        current_time = time()
+        if current_time - last_change_time > DEBOUNCE_TIME:
+            if taster != last_taster:
+                if taster:
+                    press_start_time = time()
+                else:
+                    handle_long_press()
 
-        # Bij elke klik van de rotary encoder
-        if a != a_last:
-            if a == 0:
-                # Controleer de draairichting
-                direction = 1 if a == b else -1
+            if a != a_last:
+                if a == 0:
+                    # Controleer de draairichting
+                    direction = 1 if a == b else -1
 
-                # Update de setpoint temperatuur op basis van de draairichting
-                update_setpoint(direction)
-                print(f"Setpoint Temperature: {SETPOINT_TEMP}C")
+                    # Update de setpoint temperatuur op basis van de draairichting
+                    update_setpoint(direction)
+                    print(f"Setpoint Temperature: {SETPOINT_TEMP}C")
 
+            last_change_time = current_time
 
-        # Lees de temperatuur en pas de ventilatorsnelheid aan
-        temperature = get_temperature()
-        if temperature is not None:
-            if temperature > MIN_TEMP:
-                delta = min(temperature, MAX_TEMP) - MIN_TEMP
-                fan.start(FAN_LOW + delta * FAN_GAIN)
-            elif temperature < OFF_TEMP:
-                fan.start(FAN_OFF)
-            else:
-                delta = 0  # Of stel een standaardwaarde in of behandel None op een gepaste manier
+            # Lees de temperatuur en pas de ventilatorsnelheid aan
+            temperature = get_temperature()
+            if temperature is not None:
+                if temperature > MIN_TEMP:
+                    delta = min(temperature, MAX_TEMP) - MIN_TEMP
+                    fan.start(FAN_LOW + delta * FAN_GAIN)
+                elif temperature < OFF_TEMP:
+                    fan.start(FAN_OFF)
+                else:
+                    delta = 0  # Of stel een standaardwaarde in of behandel None op een gepaste manier
 
-        # Werk de ventilator duty cycle variabele bij
-        current_duty_cycle = FAN_LOW + delta * FAN_GAIN if temperature is not None and temperature > MIN_TEMP else FAN_OFF
+            # Werk de ventilator duty cycle variabele bij
+            current_duty_cycle = FAN_LOW + delta * FAN_GAIN if temperature is not None and temperature > MIN_TEMP else FAN_OFF
 
-        # Weergave op OLED
-        fan_speed = int(current_duty_cycle / FAN_MAX * 100)
-        display_on_oled(temperature, fan_speed)
+            # Weergave op OLED
+            fan_speed = int(current_duty_cycle / FAN_MAX * 100)
+            display_on_oled(temperature, fan_speed)
 
-        sleep(WAIT_TIME)
+            sleep(WAIT_TIME)
 
-        last_taster = taster
-        a_last = a
+            last_taster = taster
+            a_last = a
 
 except KeyboardInterrupt:
     print('\nScript eindigt!')
