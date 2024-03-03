@@ -42,7 +42,7 @@ units = "c"
 thermocouple = MAX6675(CS_PIN, CLOCK_PIN, DATA_PIN, units)
 
 # Initialize Telegram bot
-TELEGRAM_BOT_TOKEN = "7170337296:AAEy930irkZ_829_KGCmMd2jOn9WGgrgOMQ"
+TELEGRAM_BOT_TOKEN = ""
 updater = Updater(token=TELEGRAM_BOT_TOKEN, use_context=True)
 dispatcher = updater.dispatcher
 
