@@ -45,11 +45,10 @@ DATA_PIN = 22
 units = "c"
 thermocouple = MAX6675(CS_PIN, CLOCK_PIN, DATA_PIN, units)
 
-# Global Variables
-taster = False
-last_taster = False
-press_start_time = 0
-press_duration = 0
+# Initialize Telegram bot
+TELEGRAM_BOT_TOKEN = "7170337296:AAEy930irkZ_829_KGCmMd2jOn9WGgrgOMQ"
+updater = Updater(token=TELEGRAM_BOT_TOKEN, use_context=True)
+dispatcher = updater.dispatcher
 
 # Function to get temperature
 def get_temperature():
