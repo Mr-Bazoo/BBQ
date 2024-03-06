@@ -1,11 +1,11 @@
+from pyky040 import pyky040
 import RPi.GPIO as GPIO
-from time import sleep
+from time import sleep, time
 from mx6675class import MAX6675, MAX6675Error
 from luma.core.interface.serial import i2c
 from luma.oled.device import sh1106
 from luma.core.render import canvas
 from PIL import Image, ImageDraw
-from telegram.ext import Updater, CommandHandler, MessageHandler, filters
 
 # Constants
 PWM_FREQ = 25
@@ -19,8 +19,12 @@ FAN_HIGH = 100
 FAN_OFF = 0
 FAN_MAX = 100
 FAN_GAIN = float(FAN_HIGH - FAN_LOW) / float(MAX_TEMP - MIN_TEMP)
-SETPOINT_TEMP = 100
-DEBOUNCE_TIME = 0.05
+SETPOINT_TEMP = 100  # Startwaarde instellen
+
+# Rotary Encoder
+SW_PIN = 5
+DT_PIN = 6
+CLK_PIN = 13
 
 # OLED Display Constants
 serial = i2c(port=1, address=0x3C)
@@ -41,10 +45,11 @@ DATA_PIN = 22
 units = "c"
 thermocouple = MAX6675(CS_PIN, CLOCK_PIN, DATA_PIN, units)
 
-# Initialize Telegram bot
-TELEGRAM_BOT_TOKEN = "7170337296:AAEy930irkZ_829_KGCmMd2jOn9WGgrgOMQ"
-updater = Updater(token=TELEGRAM_BOT_TOKEN, use_context=True)
-dispatcher = updater.dispatcher
+# Global Variables
+taster = False
+last_taster = False
+press_start_time = 0
+press_duration = 0
 
 # Function to get temperature
 def get_temperature():
@@ -63,80 +68,124 @@ def handle_fan_speed(temperature):
         elif temperature < OFF_TEMP:
             fan.start(FAN_OFF)
 
+# Function to update setpoint temperature based on rotary encoder
+def update_setpoint(scale_position):
+    global SETPOINT_TEMP
+    SETPOINT_TEMP = min(max(scale_position, MIN_TEMP), MAX_TEMP)
+
 # Function to display on OLED
-def display_on_oled(temperature, fan_speed):
+# Function to display on OLED
+def display_on_oled(temperature, fan_speed, setpoint_temp):
     oled.clear()
+
+    # Create an Image object
     image = Image.new("1", oled.size)
+
+    # Create a drawing object
     draw = ImageDraw.Draw(image)
 
+    # Display actual temperature
     if temperature is not None:
         draw.text((0, 0), "Temp: {:.2f}C".format(temperature), fill="white")
     else:
         draw.text((0, 0), "Error reading temperature", fill="white")
 
-    draw.text((0, 20), "Setpoint: {:.2f}C".format(SETPOINT_TEMP), fill="white")
-    draw.text((0, 40), "Fan Speed: {}".format(fan_speed), fill="white")
+    # Display setpoint temperature
+    draw.text((0, 20), "Setpoint: {:.2f}C".format(setpoint_temp), fill="white")
 
+    # Display fan speed
+    draw.text((0, 40), "Fan Speed: {}%".format(fan_speed), fill="white")
+
+    # Paste the image onto the OLED display
     oled.display(image)
 
-# Function to get fan speed from duty cycle
-def fan_speed_from_duty_cycle():
-    current_duty_cycle = fan.dutyCycle
-    fan_speed = int(current_duty_cycle / FAN_MAX * 100)
-    return fan_speed
+    # Print debugging message
+    print("Display updated on OLED")
 
-# Command handlers for Telegram
-def start(update, context):
-    context.bot.send_message(chat_id=update.effective_chat.id, text="Bot started. Use /setpoint to change setpoint_temp.")
+def handle_long_press():
+    global press_duration
+    press_duration = time() - press_start_time
+    if press_duration >= 5:  # If pressed for 5 seconds, initiate shutdown
+        print("Shutting down...")
+        oled.clear()
+        oled.text("Shutting down...", 0, 0)
+        oled.show()
+        sleep(2)
+        GPIO.cleanup()
+        oled.clear()
+        oled.show()
+        # You can add additional shutdown commands if needed
+        # e.g., os.system("sudo shutdown -h now")
 
-def setpoint(update, context):
-    if context.args:
-        try:
-            new_setpoint = float(context.args[0])
-            global SETPOINT_TEMP
-            SETPOINT_TEMP = new_setpoint
-            context.bot.send_message(chat_id=update.effective_chat.id, text=f"Setpoint temperature changed to {SETPOINT_TEMP}C.")
-        except ValueError:
-            context.bot.send_message(chat_id=update.effective_chat.id, text="Invalid input. Please provide a valid temperature.")
+# Callback function for pyky040
+def my_callback(scale_position):
+    update_setpoint(scale_position)
+
+# Init the encoder pins with pyky040
+my_encoder = pyky040.Encoder(CLK=CLK_PIN, DT=DT_PIN, SW=SW_PIN)
+my_encoder.setup(scale_min=MIN_TEMP, scale_max=MAX_TEMP, step=1, chg_callback=my_callback)
+my_encoder.watch()
+
+# Function to display on OLED
+def display_on_oled(temperature, fan_speed, setpoint_temp):
+    oled.clear()
+
+    # Create an Image object
+    image = Image.new("1", oled.size)
+
+    # Create a drawing object
+    draw = ImageDraw.Draw(image)
+
+    # Display actual temperature
+    if temperature is not None:
+        draw.text((0, 0), "Temp: {:.2f}C".format(temperature), fill="white")
     else:
-        context.bot.send_message(chat_id=update.effective_chat.id, text="Please provide a temperature to set as the new setpoint.")
+        draw.text((0, 0), "Error reading temperature", fill="white")
 
-def get_data(update, context):
-    temperature = get_temperature()
-    fan_speed = fan_speed_from_duty_cycle()
-    context.bot.send_message(chat_id=update.effective_chat.id, text=f"Temperature: {temperature}C\nFan Speed: {fan_speed}%\nSetpoint Temperature: {SETPOINT_TEMP}C")
+    # Display setpoint temperature
+    draw.text((0, 20), "Setpoint: {:.2f}C".format(setpoint_temp), fill="white")
 
-# Command handlers registration
-start_handler = CommandHandler('start', start)
-dispatcher.add_handler(start_handler)
+    # Display fan speed
+    draw.text((0, 40), "Fan Speed: {}%".format(fan_speed), fill="white")
 
-setpoint_handler = CommandHandler('setpoint', setpoint, pass_args=True)
-dispatcher.add_handler(setpoint_handler)
-
-get_data_handler = CommandHandler('geefmedata', get_data)
-dispatcher.add_handler(get_data_handler)
-
-# Start polling for Telegram messages
-updater.start_polling()
+    # Paste the image onto the OLED display
+    oled.display(image)
 
 # Main program loop
 try:
     while True:
-        temperature = get_temperature()
+        taster = not GPIO.input(SW_PIN)
 
-        if temperature is not None:
-            handle_fan_speed(temperature)
-            fan_speed = fan_speed_from_duty_cycle()
-            display_on_oled(temperature, fan_speed)
+        if taster != last_taster:
+            if taster:
+                press_start_time = time()
+            else:
+                handle_long_press()
+
+        # Read temperature and adjust fan speed
+        temperature = get_temperature()
+        handle_fan_speed(temperature)
+
+        # Update fan speed duty cycle variable
+        current_duty_cycle = (
+            FAN_LOW + (temperature - MIN_TEMP) * FAN_GAIN
+            if temperature is not None and temperature > MIN_TEMP
+            else FAN_OFF
+        )
+
+        # Display on OLED
+        fan_speed = int(current_duty_cycle / FAN_MAX * 100)
+        display_on_oled(temperature, fan_speed, SETPOINT_TEMP)
 
         sleep(WAIT_TIME)
 
+        last_taster = taster
+
 except KeyboardInterrupt:
-    print('\nScript ends!')
+    print('\nScript eindigt!')
 
 finally:
     fan.stop()
     GPIO.cleanup()
     oled.clear()
     oled.show()
-    updater.stop()
