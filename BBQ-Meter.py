@@ -65,21 +65,20 @@ def handle_fan_speed(temperature):
         elif temperature < OFF_TEMP:
             fan.start(FAN_OFF)
 
-# Function to display on OLED
+# Function to display temperature, fan speed, and setpoint temperature on OLED
 def display_on_oled(temperature, fan_speed, setpoint_temp):
-    oled.clear()
-
     # Create an Image object
     image = Image.new("1", oled.size)
 
     # Create a drawing object
     draw = ImageDraw.Draw(image)
 
+    # Clear the area where the numbers will be displayed
+    draw.rectangle((0, 0, oled.width, oled.height), fill="black")
+
     # Display actual temperature
     if temperature is not None:
         draw.text((0, 0), "Temp: {:.2f}C".format(temperature), fill="white")
-    else:
-        draw.text((0, 0), "Error reading temperature", fill="white")
 
     # Display setpoint temperature
     draw.text((0, 20), "Setpoint: {:.2f}C".format(setpoint_temp), fill="white")
@@ -87,11 +86,8 @@ def display_on_oled(temperature, fan_speed, setpoint_temp):
     # Display fan speed
     draw.text((0, 40), "Fan Speed: {}%".format(fan_speed), fill="white")
 
-    # Paste the image onto the OLED display
+    # Paste the updated area onto the OLED display
     oled.display(image)
-
-    # Print debugging message
-    print("Display updated on OLED")
 
 def handle_long_press():
     press_duration = time.time() - press_start_time
@@ -111,9 +107,9 @@ def handle_long_press():
 def rotary_changed(change):
     global SETPOINT_TEMP
     if change == Rotary.ROT_CW:
-        SETPOINT_TEMP += 1
+        SETPOINT_TEMP += 10
     elif change == Rotary.ROT_CCW:
-        SETPOINT_TEMP -= 1
+        SETPOINT_TEMP -= 10
     elif change == Rotary.SW_PRESS:
         print('PRESS')
     elif change == Rotary.SW_RELEASE:
