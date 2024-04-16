@@ -1,6 +1,8 @@
 import RPi.GPIO as GPIO
 import time
 
+GPIO.setmode(GPIO.BCM)
+
 class MAX6675(object):
     def __init__(self, cs_pin, clock_pin, data_pin, units="c", board=GPIO.BCM):
         # Initialize Soft (Bitbang) SPI bus
@@ -22,7 +24,7 @@ class MAX6675(object):
         GPIO.setwarnings(False)
         GPIO.setup(self.cs_pin, GPIO.OUT)
         GPIO.setup(self.clock_pin, GPIO.OUT)
-        GPIO.setup(self.data_pin, GPIO.IN) # 
+        GPIO.setup(self.data_pin, GPIO.IN) #
 
         # Pull chip select high to make chip inactive
         GPIO.output(self.cs_pin, GPIO.HIGH)
@@ -102,7 +104,7 @@ class MAX6675Error(Exception):
 
 if __name__ == "__main__":
     # default example
-    cs_pin = 24
+    cs_pin = 25
     clock_pin = 23
     data_pin = 22
     units = "c"
@@ -111,7 +113,7 @@ if __name__ == "__main__":
     try:
         while True:
             try:
-                tc = thermocouple.get()  
+                tc = thermocouple.get()
                 print("tc: {}".format(tc))
             except MAX6675Error as e:
                 tc = "Error: " + e.value
