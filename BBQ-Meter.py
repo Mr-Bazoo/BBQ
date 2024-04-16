@@ -58,12 +58,18 @@ def get_temperature():
 
 # Function to handle fan speed
 def handle_fan_speed(temperature):
+    global fan_running
     if temperature is not None:
         if temperature > MIN_TEMP:
             delta = min(temperature, MAX_TEMP) - MIN_TEMP
             fan.start(FAN_LOW + delta * FAN_GAIN)
-        elif temperature < OFF_TEMP:
-            fan.start(FAN_OFF)
+            fan_running = True
+        elif temperature < (SETPOINT_TEMP - 10):
+            fan.start(FAN_LOW)
+            fan_running = True
+        else:
+            fan.stop()
+            fan_running = False
 
 # Function to display temperature, fan speed, and setpoint temperature on OLED
 def display_on_oled(temperature, fan_speed, setpoint_temp):
@@ -107,9 +113,9 @@ def handle_long_press():
 def rotary_changed(change):
     global SETPOINT_TEMP
     if change == Rotary.ROT_CW:
-        SETPOINT_TEMP += 10
+        SETPOINT_TEMP += 10  # Increase temperature setpoint when turned right
     elif change == Rotary.ROT_CCW:
-        SETPOINT_TEMP -= 10
+        SETPOINT_TEMP -= 10  # Decrease temperature setpoint when turned left
     elif change == Rotary.SW_PRESS:
         print('PRESS')
     elif change == Rotary.SW_RELEASE:

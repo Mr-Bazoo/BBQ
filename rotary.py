@@ -34,10 +34,7 @@ class Rotary:
         self.last_status = new_status
 
     def switch_detect(self, pin):
-        if self.last_button_status == GPIO.input(self.sw_pin):
-            return
-        self.last_button_status = GPIO.input(self.sw_pin)
-        if self.sw_pin.value:
+        if GPIO.input(self.sw_pin):
             self.call_handlers(Rotary.SW_RELEASE)
         else:
             self.call_handlers(Rotary.SW_PRESS)
