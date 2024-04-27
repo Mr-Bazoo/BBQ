@@ -1,7 +1,7 @@
 import time
 from mx6675class import MAX6675, MAX6675Error
-cs_pin = 24
-clock_pin = 23
+cs_pin = 25
+clock_pin = 24
 data_pin = 22
 units = "c"
 degree_sign = u'\xb0'

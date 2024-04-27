@@ -11,15 +11,15 @@ import time
 PWM_FREQ = 24
 FAN_PIN = 18
 WAIT_TIME = 1
-OFF_TEMP = 20
-MIN_TEMP = 50
+OFF_TEMP = 10
+MIN_TEMP = 30
 MAX_TEMP = 500
-FAN_LOW = 1
+FAN_LOW = 50
 FAN_HIGH = 100
 FAN_OFF = 0
 FAN_MAX = 100
-FAN_GAIN = float(FAN_HIGH - FAN_LOW) / float(MAX_TEMP - MIN_TEMP)
 SETPOINT_TEMP = 100  # Startwaarde instellen
+FAN_GAIN = float(FAN_HIGH - FAN_LOW) / float(MAX_TEMP - MIN_TEMP)  # Fan speed gain based on temperature difference
 
 # Rotary Encoder Constants
 SW_PIN = 5
@@ -48,6 +48,12 @@ DATA_PIN = 22
 units = "c"
 thermocouple = MAX6675(CS_PIN, CLOCK_PIN, DATA_PIN, units)
 
+# Constants for fan speed calculation
+MIN_PWM_DUTY_CYCLE = 0  # Minimum PWM duty cycle
+MIN_FAN_RPM = 0  # Minimum fan RPM (corresponding to minimum PWM duty cycle)
+MAX_PWM_DUTY_CYCLE = 100  # Maximum PWM duty cycle
+MAX_FAN_RPM = 1120  # Maximum fan RPM (corresponding to maximum PWM duty cycle)
+
 # Function to get temperature
 def get_temperature():
     try:
@@ -56,23 +62,35 @@ def get_temperature():
         print(f"Error reading temperature: {e.value}")
         return None
 
+# Calculate fan speed in RPM based on PWM duty cycle
+def calculate_fan_speed(fan_speed_percent):
+    duty_cycle_range = MAX_PWM_DUTY_CYCLE - MIN_PWM_DUTY_CYCLE
+    rpm_range = MAX_FAN_RPM - MIN_FAN_RPM
+    pwm_duty_cycle = MIN_PWM_DUTY_CYCLE + (fan_speed_percent / 100) * duty_cycle_range
+    fan_speed_rpm = MIN_FAN_RPM + (pwm_duty_cycle - MIN_PWM_DUTY_CYCLE) / duty_cycle_range * rpm_range
+    return fan_speed_rpm
+
 # Function to handle fan speed
 def handle_fan_speed(temperature):
-    global fan_running
     if temperature is not None:
         if temperature > MIN_TEMP:
             delta = min(temperature, MAX_TEMP) - MIN_TEMP
-            fan.start(FAN_LOW + delta * FAN_GAIN)
-            fan_running = True
+            fan_speed_percent = FAN_LOW + delta * FAN_GAIN
+            fan_speed_percent = min(FAN_MAX, fan_speed_percent)  # Limit fan speed to FAN_MAX
         elif temperature < (SETPOINT_TEMP - 10):
-            fan.start(FAN_LOW)
-            fan_running = True
+            fan_speed_percent = FAN_LOW  # Start fan at minimum speed if temperature is too low
         else:
-            fan.stop()
-            fan_running = False
+            fan_speed_percent = FAN_OFF
+    else:
+        fan_speed_percent = FAN_OFF
+
+    fan_speed_rpm = calculate_fan_speed(fan_speed_percent)
+    fan.start(fan_speed_percent)
+    return fan_speed_percent, fan_speed_rpm
+
 
 # Function to display temperature, fan speed, and setpoint temperature on OLED
-def display_on_oled(temperature, fan_speed, setpoint_temp):
+def display_on_oled(temperature, fan_speed_rpm, setpoint_temp):
     # Create an Image object
     image = Image.new("1", oled.size)
 
@@ -89,12 +107,13 @@ def display_on_oled(temperature, fan_speed, setpoint_temp):
     # Display setpoint temperature
     draw.text((0, 20), "Setpoint: {:.2f}C".format(setpoint_temp), fill="white")
 
-    # Display fan speed
-    draw.text((0, 40), "Fan Speed: {}%".format(fan_speed), fill="white")
+    # Display fan speed in RPM
+    draw.text((0, 40), "Fan Speed: {:.2f} RPM".format(fan_speed_rpm), fill="white")
 
     # Paste the updated area onto the OLED display
     oled.display(image)
 
+# Function to handle long button press
 def handle_long_press():
     press_duration = time.time() - press_start_time
     if press_duration >= 5:  # If pressed for 5 seconds, initiate shutdown
@@ -128,20 +147,14 @@ rotary.add_handler(rotary_changed)
 # Main program loop
 try:
     while True:
-        # Read temperature and adjust fan speed
+        # Read temperature
         temperature = get_temperature()
-        handle_fan_speed(temperature)
 
-        # Update fan speed duty cycle variable
-        current_duty_cycle = (
-            FAN_LOW + (temperature - MIN_TEMP) * FAN_GAIN
-            if temperature is not None and temperature > MIN_TEMP
-            else FAN_OFF
-        )
+        # Adjust fan speed
+        fan_speed_percent, fan_speed_rpm = handle_fan_speed(temperature)
 
         # Display on OLED
-        fan_speed = int(current_duty_cycle / FAN_MAX * 100)
-        display_on_oled(temperature, fan_speed, SETPOINT_TEMP)
+        display_on_oled(temperature, fan_speed_rpm, SETPOINT_TEMP)
 
         sleep(WAIT_TIME)
 

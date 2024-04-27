@@ -1,5 +1,6 @@
 import RPi.GPIO as GPIO
 import time
+import atexit
 
 class Rotary:
 
@@ -8,17 +9,19 @@ class Rotary:
     SW_PRESS = 4
     SW_RELEASE = 8
 
+    DEBOUNCE_TIME = 0.01  # Debounce time in seconds
+
     def __init__(self, dt, clk, sw):
         self.dt_pin = dt
         self.clk_pin = clk
         self.sw_pin = sw
-        self.last_status = (GPIO.input(self.dt_pin) << 1) | GPIO.input(self.clk_pin)
+        self.last_status = 0
         GPIO.setup(self.dt_pin, GPIO.IN, pull_up_down=GPIO.PUD_UP)
         GPIO.setup(self.clk_pin, GPIO.IN, pull_up_down=GPIO.PUD_UP)
         GPIO.setup(self.sw_pin, GPIO.IN, pull_up_down=GPIO.PUD_UP)
-        GPIO.add_event_detect(self.dt_pin, GPIO.BOTH, callback=self.rotary_change)
-        GPIO.add_event_detect(self.clk_pin, GPIO.BOTH, callback=self.rotary_change)
-        GPIO.add_event_detect(self.sw_pin, GPIO.BOTH, callback=self.switch_detect)
+        GPIO.add_event_detect(self.dt_pin, GPIO.BOTH, callback=self.rotary_change, bouncetime=int(self.DEBOUNCE_TIME * 1000))
+        GPIO.add_event_detect(self.clk_pin, GPIO.BOTH, callback=self.rotary_change, bouncetime=int(self.DEBOUNCE_TIME * 1000))
+        GPIO.add_event_detect(self.sw_pin, GPIO.BOTH, callback=self.switch_detect, bouncetime=int(self.DEBOUNCE_TIME * 1000))
         self.handlers = []
         self.last_button_status = GPIO.input(self.sw_pin)
 
@@ -34,6 +37,7 @@ class Rotary:
         self.last_status = new_status
 
     def switch_detect(self, pin):
+        time.sleep(self.DEBOUNCE_TIME)  # Debounce
         if GPIO.input(self.sw_pin):
             self.call_handlers(Rotary.SW_RELEASE)
         else:
@@ -74,11 +78,18 @@ if __name__ == "__main__":
     # Add the handler function to the Rotary object
     rotary.add_handler(rotary_handler)
 
+    # Function to clean up GPIO before exiting
+    def cleanup_gpio():
+        GPIO.cleanup()
+
+    # Register GPIO cleanup function to be called upon program exit
+    atexit.register(cleanup_gpio)
+
     try:
         # Keep the program running to handle events
         while True:
             time.sleep(1)
 
     except KeyboardInterrupt:
-        # Clean up GPIO before exiting
-        GPIO.cleanup()
+        # Clean up GPIO before exiting on keyboard interrupt
+        cleanup_gpio()
