@@ -11,15 +11,17 @@ import time
 PWM_FREQ = 24
 FAN_PIN = 18
 WAIT_TIME = 1
-OFF_TEMP = 10
+OFF_TEMP = 20
 MIN_TEMP = 30
 MAX_TEMP = 500
-FAN_LOW = 50
+FAN_LOW = 1
 FAN_HIGH = 100
 FAN_OFF = 0
 FAN_MAX = 100
 SETPOINT_TEMP = 100  # Startwaarde instellen
-FAN_GAIN = float(FAN_HIGH - FAN_LOW) / float(MAX_TEMP - MIN_TEMP)  # Fan speed gain based on temperature difference
+TARGET_FAN_RPM = 500  # Target fan RPM
+TEMP_DIFF_THRESHOLD = 50  # Temperatuurverschil drempel voor het verhogen van de ventilatorsnelheid
+FAN_MAX_SPEED_PERCENT = 100  # Maximale snelheid van de ventilator in procenten
 
 # Rotary Encoder Constants
 SW_PIN = 5
@@ -73,21 +75,26 @@ def calculate_fan_speed(fan_speed_percent):
 # Function to handle fan speed
 def handle_fan_speed(temperature):
     if temperature is not None:
-        if temperature > MIN_TEMP:
-            delta = min(temperature, MAX_TEMP) - MIN_TEMP
-            fan_speed_percent = FAN_LOW + delta * FAN_GAIN
-            fan_speed_percent = min(FAN_MAX, fan_speed_percent)  # Limit fan speed to FAN_MAX
-        elif temperature < (SETPOINT_TEMP - 10):
-            fan_speed_percent = FAN_LOW  # Start fan at minimum speed if temperature is too low
-        else:
+        # Als de temperatuur hoger is dan de ingestelde temperatuur, stop de ventilator
+        if temperature > SETPOINT_TEMP:
             fan_speed_percent = FAN_OFF
+        else:
+            # Anders, bepaal de ventilatorsnelheid op basis van het temperatuurverschil
+            temp_diff = SETPOINT_TEMP - temperature
+            if temp_diff > TEMP_DIFF_THRESHOLD:
+                # Als het temperatuurverschil groter is dan de drempel, draai de ventilator op maximale snelheid
+                fan_speed_percent = FAN_MAX_SPEED_PERCENT
+            else:
+                # Anders, bereken de ventilatorsnelheid op basis van het doel-RPM
+                fan_speed_percent = (TARGET_FAN_RPM / MAX_FAN_RPM) * 100
     else:
+        # Als de temperatuur niet beschikbaar is, zet de ventilator uit
         fan_speed_percent = FAN_OFF
 
+    # Start de ventilator met de berekende snelheid in procenten
     fan_speed_rpm = calculate_fan_speed(fan_speed_percent)
     fan.start(fan_speed_percent)
     return fan_speed_percent, fan_speed_rpm
-
 
 # Function to display temperature, fan speed, and setpoint temperature on OLED
 def display_on_oled(temperature, fan_speed_rpm, setpoint_temp):
