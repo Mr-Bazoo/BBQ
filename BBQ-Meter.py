@@ -20,7 +20,7 @@ FAN_OFF = 0
 FAN_MAX = 100
 SETPOINT_TEMP = 100  # Startwaarde instellen
 TARGET_FAN_RPM = 500  # Target fan RPM
-TEMP_DIFF_THRESHOLD = 50  # Temperatuurverschil drempel voor het verhogen van de ventilatorsnelheid
+TEMP_DIFF_THRESHOLD = 10  # Temperatuurverschil drempel voor het verhogen van de ventilatorsnelheid
 FAN_MAX_SPEED_PERCENT = 100  # Maximale snelheid van de ventilator in procenten
 
 # Rotary Encoder Constants
@@ -121,7 +121,7 @@ def display_on_oled(temperature, fan_speed_rpm, setpoint_temp):
     oled.display(image)
 
 # Function to handle long button press
-def handle_long_press():
+def handle_long_press(press_start_time):
     press_duration = time.time() - press_start_time
     if press_duration >= 5:  # If pressed for 5 seconds, initiate shutdown
         print("Shutting down...")
@@ -129,11 +129,14 @@ def handle_long_press():
         oled.text("Shutting down...", 0, 0)
         oled.show()
         sleep(2)
+        
+        # Clean up GPIO and clear the OLED display
         GPIO.cleanup()
         oled.clear()
         oled.show()
-        # You can add additional shutdown commands if needed
-        # e.g., os.system("sudo shutdown -h now")
+        
+        # Shut down the system
+        os.system("sudo shutdown -h now")
 
 # Callback function for rotary encoder
 def rotary_changed(change):
