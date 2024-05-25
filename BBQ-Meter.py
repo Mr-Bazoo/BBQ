@@ -5,7 +5,20 @@ from luma.core.interface.serial import i2c
 from luma.oled.device import sh1106
 from PIL import Image, ImageDraw
 from rotary import Rotary
+from influxdb_client import InfluxDBClient, Point
+from influxdb_client.client.write_api import SYNCHRONOUS
 import time
+import os
+
+# InfluxDB configuration
+bucket = "BBQ_Meter"
+org = "BBQ_Meter"
+token = os.environ.get("INFLUXDB_TOKEN")  # Make sure to set this environment variable
+url = "http://192.168.1.160:8086"  # Update this with your InfluxDB URL
+
+# Create InfluxDB client
+client = InfluxDBClient(url=url, token=token, org=org)
+write_api = client.write_api(write_options=SYNCHRONOUS)
 
 # Constants
 PWM_FREQ = 24
@@ -18,10 +31,10 @@ FAN_LOW = 1
 FAN_HIGH = 100
 FAN_OFF = 0
 FAN_MAX = 100
-SETPOINT_TEMP = 100  # Startwaarde instellen
-TARGET_FAN_RPM = 500  # Target fan RPM
-TEMP_DIFF_THRESHOLD = 10  # Temperatuurverschil drempel voor het verhogen van de ventilatorsnelheid
-FAN_MAX_SPEED_PERCENT = 100  # Maximale snelheid van de ventilator in procenten
+SETPOINT_TEMP = 100
+TARGET_FAN_RPM = 500
+TEMP_DIFF_THRESHOLD = 10
+FAN_MAX_SPEED_PERCENT = 100
 
 # Rotary Encoder Constants
 SW_PIN = 5
@@ -51,12 +64,12 @@ units = "c"
 thermocouple = MAX6675(CS_PIN, CLOCK_PIN, DATA_PIN, units)
 
 # Constants for fan speed calculation
-MIN_PWM_DUTY_CYCLE = 0  # Minimum PWM duty cycle
-MIN_FAN_RPM = 0  # Minimum fan RPM (corresponding to minimum PWM duty cycle)
-MAX_PWM_DUTY_CYCLE = 100  # Maximum PWM duty cycle
-MAX_FAN_RPM = 1120  # Maximum fan RPM (corresponding to maximum PWM duty cycle)
+MIN_PWM_DUTY_CYCLE = 0
+MIN_FAN_RPM = 0
+MAX_PWM_DUTY_CYCLE = 100
+MAX_FAN_RPM = 1120
 
-# Function to get temperature
+# Function to read temperature
 def get_temperature():
     try:
         return thermocouple.get()
@@ -75,80 +88,70 @@ def calculate_fan_speed(fan_speed_percent):
 # Function to handle fan speed
 def handle_fan_speed(temperature):
     if temperature is not None:
-        # Als de temperatuur hoger is dan de ingestelde temperatuur, stop de ventilator
         if temperature > SETPOINT_TEMP:
             fan_speed_percent = FAN_OFF
         else:
-            # Anders, bepaal de ventilatorsnelheid op basis van het temperatuurverschil
             temp_diff = SETPOINT_TEMP - temperature
             if temp_diff > TEMP_DIFF_THRESHOLD:
-                # Als het temperatuurverschil groter is dan de drempel, draai de ventilator op maximale snelheid
                 fan_speed_percent = FAN_MAX_SPEED_PERCENT
             else:
-                # Anders, bereken de ventilatorsnelheid op basis van het doel-RPM
                 fan_speed_percent = (TARGET_FAN_RPM / MAX_FAN_RPM) * 100
     else:
-        # Als de temperatuur niet beschikbaar is, zet de ventilator uit
         fan_speed_percent = FAN_OFF
 
-    # Start de ventilator met de berekende snelheid in procenten
     fan_speed_rpm = calculate_fan_speed(fan_speed_percent)
     fan.start(fan_speed_percent)
     return fan_speed_percent, fan_speed_rpm
 
-# Function to display temperature, fan speed, and setpoint temperature on OLED
+# Function to display on OLED
 def display_on_oled(temperature, fan_speed_rpm, setpoint_temp):
-    # Create an Image object
     image = Image.new("1", oled.size)
-
-    # Create a drawing object
     draw = ImageDraw.Draw(image)
-
-    # Clear the area where the numbers will be displayed
     draw.rectangle((0, 0, oled.width, oled.height), fill="black")
-
-    # Display actual temperature
+    
     if temperature is not None:
         draw.text((0, 0), "Temp: {:.2f}C".format(temperature), fill="white")
-
-    # Display setpoint temperature
     draw.text((0, 20), "Setpoint: {:.2f}C".format(setpoint_temp), fill="white")
-
-    # Display fan speed in RPM
     draw.text((0, 40), "Fan Speed: {:.2f} RPM".format(fan_speed_rpm), fill="white")
-
-    # Paste the updated area onto the OLED display
+    
     oled.display(image)
 
 # Function to handle long button press
 def handle_long_press(press_start_time):
     press_duration = time.time() - press_start_time
-    if press_duration >= 5:  # If pressed for 5 seconds, initiate shutdown
+    if press_duration >= 5:
         print("Shutting down...")
         oled.clear()
         oled.text("Shutting down...", 0, 0)
         oled.show()
         sleep(2)
         
-        # Clean up GPIO and clear the OLED display
         GPIO.cleanup()
         oled.clear()
         oled.show()
         
-        # Shut down the system
         os.system("sudo shutdown -h now")
 
 # Callback function for rotary encoder
 def rotary_changed(change):
     global SETPOINT_TEMP
     if change == Rotary.ROT_CW:
-        SETPOINT_TEMP += 10  # Increase temperature setpoint when turned right
+        SETPOINT_TEMP += 10
     elif change == Rotary.ROT_CCW:
-        SETPOINT_TEMP -= 10  # Decrease temperature setpoint when turned left
+        SETPOINT_TEMP -= 10
     elif change == Rotary.SW_PRESS:
         print('PRESS')
     elif change == Rotary.SW_RELEASE:
         print('RELEASE')
+
+# Function to send data to InfluxDB
+def write_to_influxdb(temperature, fan_speed_rpm):
+    point = Point("temperature_and_fan_speed") \
+        .tag("device", "BBQ_meter") \
+        .field("temperature", temperature) \
+        .field("fan_speed_rpm", fan_speed_rpm)
+    
+    write_api.write(bucket=bucket, org=org, record=point)
 
 # Initialize rotary encoder
 rotary = Rotary(CLK_PIN, DT_PIN, SW_PIN)
@@ -157,20 +160,13 @@ rotary.add_handler(rotary_changed)
 # Main program loop
 try:
     while True:
-        # Read temperature
         temperature = get_temperature()
-
-        # Adjust fan speed
         fan_speed_percent, fan_speed_rpm = handle_fan_speed(temperature)
-
-        # Display on OLED
         display_on_oled(temperature, fan_speed_rpm, SETPOINT_TEMP)
-
+        write_to_influxdb(temperature, fan_speed_rpm)
         sleep(WAIT_TIME)
-
 except KeyboardInterrupt:
-    print('\nScript eindigt!')
-
+    print('\nScript ended!')
 finally:
     fan.stop()
     GPIO.cleanup()
